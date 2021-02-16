@@ -9,6 +9,7 @@
 #define FREQUENCY     RF69_868MHZ
 #define ENCRYPTKEY    "sampleEncryptKey"
 #define READ_EEPROM_KEY 'r'
+#define CLEAR_EEPROM_KEY 'c'
 
 #define PN532_IRQ     3
 #define PN532_RESET   4
@@ -64,7 +65,7 @@ void loop()
         }
         stack_pointer -= 4;
         EEPROM.update(EEPROM.length() - 1, stack_pointer);
-        goto SEND_ACK;
+        goto REMOVED;
       }
     } 
       for (byte i = 0; i < radio.DATALEN; i++)
@@ -75,7 +76,7 @@ void loop()
       
       stack_pointer += 4;
       EEPROM.update(EEPROM.length() - 1, stack_pointer);
-SEND_ACK:
+REMOVED:
       if (radio.ACKRequested())
       {
         radio.sendACK();
@@ -100,6 +101,12 @@ SEND_ACK:
       {
         Serial.println(EEPROM.read(i),HEX);
       }
+    }
+    else if(input == CLEAR_EEPROM_KEY)
+    {
+      EEPROM.update(EEPROM.length() - 1, 0x00);
+      stack_pointer = 0x00;
+      Serial.println("Memory cleared!");
     }
   }
   else
