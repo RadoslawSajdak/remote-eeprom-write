@@ -16,6 +16,7 @@
 
 RFM69 radio;
 int stack_pointer = 0;
+uint8_t buffer[4];
 
 Adafruit_PN532 nfc(PN532_IRQ, PN532_RESET);
 
@@ -49,39 +50,48 @@ void loop()
   boolean success;
   uint8_t uid[] = { 0, 0, 0, 0};
   uint8_t uidLength;
+  
 
   if(radio.receiveDone())
   {
+    for(int i = 0; i < 4; i++) buffer[i] = radio.DATA[i];
+    if (radio.ACKRequested())
+    {
+      radio.sendACK();
+      Serial.print(" - ACK sent  "); 
+      Serial.print(buffer[0]);
+      Serial.print(buffer[1]);
+      Serial.print(buffer[2]);
+      Serial.print(buffer[3]);
+    }
+    delay(500);
     for (int i = 0; i < stack_pointer; i += 4)
     {
-      if( EEPROM.read(i + 0) == radio.DATA[0] && \
-          EEPROM.read(i + 1) == radio.DATA[1] && \
-          EEPROM.read(i + 2) == radio.DATA[2] && \
-          EEPROM.read(i + 3) == radio.DATA[3])
+      if( EEPROM.read(i + 0) == buffer[0] && \
+          EEPROM.read(i + 1) == buffer[1] && \
+          EEPROM.read(i + 2) == buffer[2] && \
+          EEPROM.read(i + 3) == buffer[3])
       {
         for(int j = 0; j < 4; j++)
         {
           EEPROM.update(i + j, EEPROM.read(stack_pointer - 4 + j));
         }
         stack_pointer -= 4;
+        Serial.println("Removed!");
         EEPROM.update(EEPROM.length() - 1, stack_pointer);
         goto REMOVED;
       }
     } 
-      for (byte i = 0; i < radio.DATALEN; i++)
+    for (int i = 0; i < 4; i++)
       {
-        Serial.println(radio.DATA[i]);
-        EEPROM.update(stack_pointer + i,radio.DATA[i]);
+        EEPROM.update(stack_pointer + i,buffer[i]);
       }
       
       stack_pointer += 4;
+      Serial.println("Added!");
       EEPROM.update(EEPROM.length() - 1, stack_pointer);
 REMOVED:
-      if (radio.ACKRequested())
-      {
-        radio.sendACK();
-        Serial.print(" - ACK sent");
-      }
+      delay(10);
 
   }
 
@@ -99,7 +109,7 @@ REMOVED:
       
       else 
       {
-        Serial.println(EEPROM.read(i),HEX);
+        Serial.print(EEPROM.read(i),HEX); Serial.print("  Pointer:"); Serial.println(stack_pointer);
       }
     }
     else if(input == CLEAR_EEPROM_KEY)
